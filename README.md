@@ -5,19 +5,33 @@ This adapter is for [Fixer.io](https://fixer.io/) and supports the convert endpo
 ## Install
 
 ```bash
-npm install
+yarn install
 ```
 
 ## Test
 
 ```bash
-npm test
+yarn test
 ```
 
 ## Create the zip
 
 ```bash
 zip -r cl-fixer.zip .
+```
+
+## Docker
+
+If you wish to use Docker to run the adapter, you can build the image by running the following command:
+
+```bash
+docker build . -t fixer-adapter
+```
+
+Then run it with:
+
+```bash
+docker run -p 8080:8080 -e API_KEY='YOUR_API_KEY' -it fixer-adapter:latest
 ```
 
 ## Install to AWS Lambda
