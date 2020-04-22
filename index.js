@@ -1,79 +1,41 @@
-const rp = require('request-promise')
-const retries = process.env.RETRIES || 3
-const delay = process.env.RETRY_DELAY || 1000
-const timeout = process.env.TIMEOUT || 1000
+const { Requester, Validator } = require('external-adapter')
 
-const requestRetry = (options, retries) => {
-  return new Promise((resolve, reject) => {
-    const retry = (options, n) => {
-      return rp(options)
-        .then(response => {
-          if (response.body.error) {
-            if (n === 1) {
-              reject(response)
-            } else {
-              setTimeout(() => {
-                retries--
-                retry(options, retries)
-              }, delay)
-            }
-          } else {
-            return resolve(response)
-          }
-        })
-        .catch(error => {
-          if (n === 1) {
-            reject(error)
-          } else {
-            setTimeout(() => {
-              retries--
-              retry(options, retries)
-            }, delay)
-          }
-        })
-    }
-    return retry(options, retries)
-  })
+const customParams = {
+  base: ['base', 'from'],
+  quote: ['quote', 'to'],
+  endpoint: false,
+  amount: false
 }
 
 const createRequest = (input, callback) => {
-  const endpoint = input.data.endpoint || 'convert'
-  const url = 'https://data.fixer.io/api/' + endpoint
+  const validator = new Validator(input, customParams, callback)
+  const jobRunID = validator.validated.id
+  const endpoint = validator.validated.data.endpoint || 'convert'
+  const url = `https://data.fixer.io/api/${endpoint}`
+  const from = validator.validated.data.base.toUpperCase()
+  const to = validator.validated.data.quote.toUpperCase()
+  const amount = validator.validated.data.amount || 1
+  const access_key = process.env.API_KEY // eslint-disable-line camelcase
 
-  const from = input.data.from || 'EUR'
-  const to = input.data.to || 'USD'
-  const amount = input.data.amount || '1'
-
-  const queryObj = {
-    access_key: process.env.API_KEY,
-    from: from,
-    to: to,
-    amount: amount
+  const qs = {
+    from,
+    to,
+    amount,
+    access_key
   }
 
   const options = {
-    url: url,
-    qs: queryObj,
-    json: true,
-    timeout,
-    resolveWithFullResponse: true
+    url,
+    qs
   }
-  requestRetry(options, retries)
+
+  Requester.requestRetry(options)
     .then(response => {
-      callback(response.statusCode, {
-        jobRunID: input.id,
-        data: response.body,
-        result: response.body.result,
-        statusCode: response.statusCode
-      })
+      response.body.result = Requester.validateResult(response.body, ['result'])
+      callback(response.statusCode, Requester.success(jobRunID, response))
     })
     .catch(error => {
-      callback(error.statusCode, {
-        jobRunID: input.id,
-        status: 'errored',
-        error,
-        statusCode: error.statusCode
-      })
+      callback(500, Requester.errored(jobRunID, error))
     })
 }
 
