@@ -1,6 +1,6 @@
 # Chainlink Fixer External Adapter
 
-This adapter is for [Fixer.io](https://fixer.io/) and supports the convert endpoint.
+**This adapter has moved to our [external adapters monorepo](https://github.com/smartcontractkit/external-adapters-js)!**
 
 ## Input Params
 
